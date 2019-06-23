@@ -1,5 +1,17 @@
 #+TITLE: 理解Factory pattern
 
+* 目录                                                                  :TOC:
+- [[#引言][引言]]
+- [[#简单-factory-模式][简单 Factory 模式]]
+- [[#factory-method模式][Factory Method模式]]
+  - [[#实现factory-method][实现Factory Method]]
+  - [[#factory方法模式的好处][Factory方法模式的好处]]
+- [[#抽象factory模式][抽象Factory模式]]
+  - [[#实现抽象工厂模式][实现抽象工厂模式]]
+- [[#factory-method-vs-abstract-factory-method][Factory method vs. Abstract Factory method]]
+
+* 引言
+
 在OO编程中，术语factory指负责创建其它类型（types）对象（objects）的class。通常，
 作为factory的class有一个对象以及与对象有关的一些方法。客户（client）使用特定参数
 调用某一方法；从而创建出所需类型的对象并且通过factory返回给客户。
