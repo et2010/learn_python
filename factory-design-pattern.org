@@ -1,0 +1,389 @@
+#+TITLE: 理解Factory pattern
+
+在OO编程中，术语factory指负责创建其它类型（types）对象（objects）的class。通常，
+作为factory的class有一个对象以及与对象有关的一些方法。客户（client）使用特定参数
+调用某一方法；从而创建出所需类型的对象并且通过factory返回给客户。
+
+所以这里真正的问题是，既然客户可以直接创建对象，为什么我们还需要使用factory？原
+因是，factory具有以下一些优点：
+
+- 第一个优点是弱耦合/关联，对象的创建可以独立于class实现
+- 客户不需要知道创建对象的class，反过来，对象又为客户所用。只需要知道接口，方法
+  以及创建指定类型对象所需的参数。这简化了客户的实现
+- 很容易在客户不改变代码的情况下向factory添加另一个class用来创建另一种类型的对象。
+  在极简情况下，客户仅需要传递另一个参数。
+- Factory也可以重用已有的对象。然而，hen the client does direct object creation,
+  this always creates a new object.
+
+我们来考虑一个制造玩具——玩具车和洋娃娃的制造企业的情况。假设公司的一台机器当前正
+在生产玩具车。然后，公司的CEO基于市场需求认为现在很有必要生产洋娃娃。这一情况正
+切合Factory设计模式。在这个例子中，机器相当于接口，而CEO是客户。CEO只需要关注要
+生产的对象（或玩具），并且了解接口——机器——可以创建对象。
+
+Factory模式有三种变种：
+
+- 简单 Factory 模式 :: 允许接口创建对象而不暴露对象创建逻辑。
+- Factory Method 模式 :: 允许接口创建对象，但是将确定对象创建所用class的决策权下
+     放到子类（subclasses）
+- 抽象Factory模式 :: 抽象Factory是用于创建相关对象的接口，而无需指定/暴露它们的
+                 classes。这一模式提供另一个factory的i对象（复数），在内部由这些对
+                 象来创建其它对象。
+
+
+* 简单 Factory 模式
+
+对有的人来说，简单Factory自身并不算一种设计模式。它更多地是一个概念，开发者需要
+在深入了解Factory方法以及抽象Factory方法之前了解这一概念。Factory帮助创建不同类
+型的对象而不是直接实例化对象。
+
+让我们借助下面的图来理解这一点。这里，客户class使用Factory class，后者拥有
+~create_type()~ 方法。当客户以类型参数调用 ~create_type()~ 方法，根据传递的参数，
+Factory返回 *Product1* 或者 *Product2*:
+
+#+DOWNLOADED: /tmp/screenshot.png @ 2019-06-23 14:05:09
+#+attr_org: :width 400px
+[[file:img/jian_chan_factory_mo_shi/screenshot_2019-06-23_14-05-09.png]]
+
+现在让我们借助一个Python 3.5的代码示例来理解简单Factory模式。在下面的snippet中，
+我们创建一个名为 ~Animal~ 的抽象product。~Animal~ 是一个虚基类（~ABCMeta~ 是
+Python的特殊metaclass，用来使某个类 ~Abstract~）并拥有 ~do_say()~ 方法。我们从
+Animal接口创建两个产品（~Cat~ 和 ~Dog~）并且用这些动物的叫声来实现
+~do_say()~。~ForestFactory~ Factory拥有 ~make_sound()~方法。根据客户所传递参数的
+类型，会在运行时创建一个适当的Animal实例并且打印出正确的叫声：
+
+#+begin_src python :results output drawer
+from abc import ABCMeta, abstractmethod
+
+
+class Animal(metaclass=ABCMeta):
+    @abstractmethod
+    def do_say(self):
+        pass
+
+
+class Dog(Animal):
+    def do_say(self):
+        print("Bhow Bhow!!")
+
+
+class Cat(Animal):
+    def do_say(self):
+        print("Meow Meow!!")
+
+
+# forest factory defined
+class ForestFactory(object):
+    def make_sound(self, object_type):
+        return eval(object_type)().do_say()
+
+
+# client code
+if __name__ == '__main__':
+    ff = ForestFactory()
+    animal = input("Which animal should make_sound Dog or Cat?")
+    ff.make_sound(animal)
+#+end_src
+
+* Factory Method模式
+
+下面的要点可以帮助我们理解Factory method模式：
+
+- 我们定义一个接口用来创建对象，但是不同于工厂直接负责对象创建，创建对象的责任被
+  延迟到子类，子类决定哪个class要实例化。
+- Factory方法的创建是通过继承而不是通过实例化
+- Factory方法使设计的可定制性得到提升。它可以返回相同的instance或者subclass而不
+  是一个某一特定类型的对象（正如simple factory method中那样）。
+
+
+#+DOWNLOADED: /tmp/screenshot.png @ 2019-06-23 18:03:17
+#+attr_org: :width 400px
+[[file:img/factory_method_mu_shi/screenshot_2019-06-23_18-03-17.png]]
+
+
+在上面的UML图中，我们有一个抽象类，~Creator~，它包含
+~factoryMethod()~。~factoryMethod()~方法负有创建特定类型对象的职
+责。~ConcreteCreator~类具有~factoryMethod()~，它实现了~Creator~抽象类，并且这个
+方法可以在运行时改变创建的对象。~ConcreteCreator~创建~ConcreteProduct~并且确保所
+创建的对象实现了~Product~类并且提供了~Product~接口中所有方法的实现。
+
+简言之，~Creator~接口以及~ConcreteCreator~类的~factoryMethod()~决定了要创建哪一
+个Product子类。因此，Factory method模式定义了一个接口用于创建对象，但是将要实例
+化哪个类这一决定推迟到它的subclasses来做。
+
+** 实现Factory Method
+
+让我们以一个真实世界的场景为例，来理解Factory method的实现。假如我们要为个人或公
+司在类似于LinkedIn或者Facebook等社交网络上创建不同类型的profile。现在，每一个这
+类profile将包含特定的sections。在LinkedIn上面，你将会有一个section关于个人所提交
+的专利或者是他所写的publications。在Facebook上，你会看到一个相册中关于你最近游玩
+的旅游景点的sections。此外，在这些profiles中，还会有一个关于个人信息的通用
+section。所以，简单来说，我们想要创建不同类型的profiles，并将正确的sections添加
+到profile中。
+
+现在让我们看一下实现。在下面的代码实例中，我们将从定义~Product~接口开始。我们将
+创建一个~Section~抽象类来定义一个section应该长什么样。我们尽量简化问题，只提供一
+个抽象方法，~describe()~。
+
+我们现在创建多个~ConcreteProduct~类，~PersonalSection~, ~AlbumSection~,
+~PatentSection~以及~PublicationSection~。这些类实现了~describe()~抽象方法并且打
+印出它们各自的section name
+
+#+begin_src python :results output drawer
+class Section(metaclass=ABCMeta):
+    @abstractmethod
+    def describe(self):
+        pass
+
+
+class PersonalSection(Section):
+    def describe(self):
+        print("Personal Section")
+
+
+class AlbumSection(Section):
+    def describe(self):
+        print("Album Section")
+
+
+class PatentSection(Section):
+    def describe(self):
+        print("Patent Section")
+
+
+class PublicationSection(Section):
+    def describe(self):
+        print("Publication Section")
+#+end_src
+
+我们创建一个名为~Profile~的~Creator~抽象类。~Profile [Creator]~抽象类提供了一个
+factory方法，~createProfile()~。~createProfile()~方法应由~ConcreteClass~实现以创
+建具有正确sections的profiles。~Profile~抽象类并不知道各个profile应该具有的
+sections。例如，Facebook profile应该包括个人信息和相册sections。所以我们让
+subclass来决定这一点。
+
+我们创建两个~ConcreteCreator~类，~linkedin~和~facebook~，每个类都实现
+了~createProfile()~抽象方法，用于在运行时实际创建（实例化）多个
+sections（~ConcreteProducts~）
+
+#+begin_src python :results output drawer
+class Profile(metaclass=ABCMeta):
+    def __init__(self):
+        self.sections = []
+        self.createProfile()
+
+    @abstractmethod
+    def createProfile(self):
+        pass
+
+    def getSections(self):
+        return self.sections
+
+    def addSections(self, section):
+        self.sections.append(section)
+
+
+class linkedin(Profile):
+    def createProfile(self):
+        self.addSections(PersonalSection())
+        self.addSection(PatentSection())
+        self.addSection(PublicationSection())
+
+
+class facebook(Profile):
+    def createProfile(self):
+        self.addSection(PersonalSection())
+        self.addSection(AlbumSection())
+#+end_src
+
+最后我们写出client代码，决定实例化哪一个~Creator~类，以创建所需的profile：
+
+#+begin_src python :results output drawer
+if __name__ == '__main__':
+    profile_type = input(
+        "Which Profile you'd lick to create? [LinkedIn or FaceBook]")
+    profile = eval(profile_type.lower())()
+    print("Creating Profile..", type(profile).__name__)
+    print("Profile has sections --", profile.getSections())
+#+end_src
+
+
+现在如果你运行完整代码，它会要你输入你想创建的profile的名字。在下面的截图中，我
+们选择~Facebook~。然后它会实例化~facebook [ConcreteCreator]~ class。在内部，这会
+创建 ~ConcreteProduct(s)~，即，它会实例化~PersonalSection~和~AlbumSection~。如果
+选择的是~LinkedIn~，则会创建~PersonalSection,
+PatentSection~和~PublicationSection~。
+
+前面的代码会产生如下输出
+
+
+#+DOWNLOADED: /tmp/screenshot.png @ 2019-06-23 19:46:01
+#+attr_org: :width 400px
+[[file:img/factory_method_mu_shi/screenshot_2019-06-23_19-46-01.png]]
+
+** Factory方法模式的好处
+
+你已经学会了Factory method模式和怎样实现Factory methods，我们来看一下Factory
+method模式的好处：
+
+- 它带来了很多灵活性，使代码具有通用性，而不会将实例化绑定到某一个类。这样，我们
+  依赖于接口（Product）而不依赖于~ConcreteProduct~类。
+- 弱耦合，因为创建对象的代码和使用它的代码是分开的。客户不需要操心需要传递什么参
+  数以及要实例化哪个class。很容易添加新的classes，而且易于维护。
+
+* 抽象Factory模式
+抽象Factory模式的主要目标是提供一个接口来创建相关对象的families，而无需指定具体
+类。Factory methods的目标是将实例的创建推迟到subclasses，而抽象Factory方法是创建
+相关对象的族（families）：
+
+
+#+DOWNLOADED: /tmp/screenshot.png @ 2019-06-23 20:01:17
+#+attr_org: :width 400px
+[[file:img/chou_xiang_factory_mu_shi/screenshot_2019-06-23_20-01-17.png]]
+
+
+如图中所示，~ConcreteFactory1~和~ConcreteFactory2~从~AbstractFactory~接口创建得
+到。这个接口有创建多个对象的方法。
+
+~ConcreteFactory1~和~ConcreteFactory2~实现了~AbstractFactory~并创建
+了~ConcreteProduct1~，~ConcreteProduct2~，~AnotherConcreteProduct1~，以
+及~AnotherConcreteProduct2~。
+
+~ConcreteProduct1~和~ConcreteProduct2~又是通过~AbstractProduct~接口创建得到的，
+而~AnotherConcreteProduct1~和~AnotherConcreteProduct2~是
+从~AnotherAbstractProduct~接口创建得到的。
+
+从效果上说，抽象Factory模式确保client和对象的创建分离但是又允许使用所创建的对象。
+client只能通过接口来访问对象。如果要使用一个family的产品，抽象Factory模式帮助客
+户一次使用来自one/family对象每次。例如，如果一个开发中的应用需要不依赖于某个平台，
+那么它需要抽象比如OS，文件系统调用等等依赖。抽象工厂模式解决为整个平台创建所需的
+服务以使客户无需直接创建平台对象。
+
+** 实现抽象工厂模式
+
+考虑一下你最喜爱的pizza店的情况。它供应多种pizza，对吗？不不，稍等，我知道你现在
+就想要下订单订一个，但是先让我们搞定这个例子！
+
+现在，设想一下我们创建了一个pizza店，你可以在那里吃到美味的印度和美式pizzas。为
+此，我们先创建一个虚基类，~PizzaFactory~（前面UML图中
+的~AbstractFactory~）。~PizzaFactory~类有两个抽象方
+法，~createVegPizza()~和~createNonVegPizza()~，这两个方法需要由~ConcreteFactory~
+来实现。在本例中，我们创建两个concrete factories，
+即，~IndianPizzaFactory~和~USPizzaFactory~。看一下下面代码对concrete factories的
+实现：
+
+#+begin_src python :results output drawer
+from abc import ABCMeta, abstractmethod
+
+
+class PizzaFactory(metaclass=ABCMeta):
+    @abstractmethod
+    def createVegPizza(self):
+        pass
+
+    @abstractmethod
+    def createNonVegPizza(self):
+        pass
+
+
+class IndianPizzaFactory(PizzaFactory):
+    def createVegPizza(self):
+        return DeluxVeggiePizza()
+
+    def createNonVegPizza(self):
+        return ChickenPizza()
+
+
+class USPizzaFactory(PizzaFactory):
+    def createVegPizza(self):
+        return MexicanVegPizza()
+
+    def createNonVegPizza(self):
+        return HamPizza()
+#+end_src
+
+现在，我们进行下一步，定义~AbstractProducts~。在下面的代码中，我们创建两个抽象
+类，~VegPizza~和~NonVegPizza~（前面UML图中
+的~AbstractProduct~和~AnotherAbstractProduct~）。它们各自定义了一个方
+法，~prepare()~和~server()~。
+
+这里设想的处理过程是vegetarian pizzas是用适当的crust，蔬菜以及调味品prepare得到
+的，而nonvegetarian pizzas是在vegetarian pizzas之上serve非蔬菜的toppings得到的。
+
+我们然后对每种~AbstractProducts~定义~ConcreteProducts~。现在，在这个例子，我们创
+建~DeluxVeggiePizza~和~MexicanVegPizza~并且实现~prepare()~方法。UML图中
+的~ConcreteProducts1~和~ConcreteProducts2~代表了这些类。
+
+然后，我们定义~ChickenPizza~和~HamPizza~并且实现~serve()~方法——这些代表
+了~AnotherConcreteProducts1~和~AnotherConcreteProducts2~：
+
+#+begin_src python :results output drawer
+class VegPizza(metaclass=ABCMeta):
+    @abstractmethod
+    def prepare(self, VegPizza):
+        pass
+
+
+class NonVegPizza(metaclass=ABCMeta):
+    @abstractmethod
+    def serve(self, VegPizza):
+        pass
+
+
+class DeluxVeggiePizza(VegPizza):
+    def prepare(self):
+        print("Prepare ", type(self).__name__)
+
+
+class ChickenPizza(NonVegPizza):
+    def serve(self, VegPizza):
+        print(
+            type(self).__name__, " is served with Chicken on ",
+            type(VegPizza).__name__)
+
+
+class MexicanVegPizza(VegPizza):
+    def prepare(self):
+        print("Prepare ", type(self).__name__)
+
+
+class HamPizza(NonVegPizza):
+    def serve(self, VegPizza):
+        print(
+            type(self).__name__, " is served with Ham on ",
+            type(VegPizza).__name__)
+#+end_src
+
+当end user来到~PizzaStore~并且点了一份American nonvegetarian
+pizza时，~USPizzaFactory~负责preparing vegetarian pizza作为基材，并且serving the
+nonvegetarian pizza with ham on top!
+
+#+begin_src python :results output drawer
+class PizzaStore:
+    def __init__(self):
+        pass
+
+    def makePizzas(self):
+        for factory in [IndianPizzaFactory(), USPizzaFactory()]:
+            self.factory = factory
+            self.NonVegPizza = self.factory.createNonVegPizza()
+            self.VegPizza = self.factory.createVegPizza()
+            self.VegPizza.prepare()
+            self.NonVegPizza.serve(self.VegPizza)
+
+
+pizza = PizzaStore()
+pizza.makePizzas()
+#+end_src
+
+以下是上面代码实例的输出：
+
+#+DOWNLOADED: /tmp/screenshot.png @ 2019-06-23 21:45:36
+#+attr_org: :width 400px
+[[file:img/chou_xiang_factory_mu_shi/screenshot_2019-06-23_21-45-36.png]]
+
+* Factory method vs. Abstract Factory method
+
+
+#+DOWNLOADED: /tmp/screenshot.png @ 2019-06-23 21:53:17
+#+attr_org: :width 600px
+[[file:img/factory_method_vs_abstract_factory_method/screenshot_2019-06-23_21-53-17.png]]
